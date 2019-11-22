@@ -13,9 +13,9 @@ class Peer:
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "7777"  #5555    7777
-        self.portPredecessor = "8888"  #4444    8888
-        self.portSuccessor =   "8888"  #4444    8888
+        self.portClient =      "5555"  #5555    7777
+        self.portPredecessor = "4444"  #4444    8888
+        self.portSuccessor =   "4444"  #4444    8888
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = id
@@ -97,7 +97,7 @@ class Peer:
         print("intentando ingresar")
         #dir es la direcion a donde voy a solicitar mi ingreso por primera vez
 
-        dir = "192.168.0.6" + ":" + "5555"
+        dir = "192.168.17.248" + ":" + "5555"
         
         flag = False
 

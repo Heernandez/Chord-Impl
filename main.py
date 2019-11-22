@@ -1,11 +1,11 @@
 from Peer import Peer
 import zmq
 
-#firstPeer = True
-firstPeer = False
+firstPeer = True
+#firstPeer = False
 
 ctx = zmq.Context()
-MyPeer = Peer(5)
+MyPeer = Peer(1)
 poll = zmq.Poller()
 
 '''
@@ -61,7 +61,7 @@ while login:
         elif m["request"] == "download":
             #recibo solicitud de descarga de un archivo
             pass
-            
+        
         elif m["request"] == "print":
             cadena = MyPeer.printPeer()
             print(MyPeer.__str__())
@@ -88,3 +88,10 @@ while login:
         elif m["request"] == "client":
             #recibo solicitud de cual es mi ip+puerto por la cual atiendo clientes
             MyPeer.socketPredecessor.send_json({"client":MyPeer.getMyClient()})
+        
+        elif m["request"] == "updateFT":
+            #recibe el id de su predecesor para recalcular las responsabilidades
+            #y en caso tal enviar los archivos que deban cambiar de dueño
+            pass
+        
+        #end behavioral
