@@ -27,6 +27,21 @@ def generation(ip, size = 25):
     cadena = ip + aleatoria
     return cadena
 
-cadena = generation("192.168.0.6")
-hashCode = hashString(cadena)
-print("el tipo es :{}".format(hashCode))
+
+dictionary = {
+
+}
+
+ip = ("192.168.0.")
+for i in range(256):
+    pass
+    cadena = generation(ip + str(i))
+    hashCode = hashString(cadena)
+    hashInteger = int(hashCode, 16)
+    modHashInteger = (hashInteger % (1024 * 1024))
+    print ("Hash integer -- > ", hashInteger,"\n", "Hash with module: ", modHashInteger)
+    print("el tipo es :{}".format(hashCode))
+    dictionary[modHashInteger] = cadena
+
+
+print(len(dictionary))
