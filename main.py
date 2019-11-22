@@ -18,7 +18,7 @@ poll.register(MyPeer.socketPredecessor, zmq.POLLIN)
 
 login = False
 if firstPeer:
-    print("Iniciando Chrod.....")
+    print("Iniciando Chord.....")
     login = True
 else:
     print("Se va a unir el Peer con id {}".format(MyPeer.getId()))
