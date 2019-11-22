@@ -62,6 +62,12 @@ while login:
             #recibo solicitud de descarga de un archivo
             pass
         
+        elif m["request"] == "upload":
+            #quieren guardar un archivo, voy acomprobar si esta en mi responsabilidad
+            validationUpload = MyPeer.validateResposibility(m["id"],)
+
+
+
         elif m["request"] == "print":
             cadena = MyPeer.printPeer()
             print(MyPeer.__str__())
