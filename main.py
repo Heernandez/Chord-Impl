@@ -5,7 +5,7 @@ firstPeer = True
 firstPeer = False
 
 ctx = zmq.Context()
-MyPeer = Peer(7)
+MyPeer = Peer(15)
 poll = zmq.Poller()
 
 '''
@@ -26,6 +26,7 @@ else:
     print(MyPeer.__str__())
 
 while login:
+    #print("Esperando Solicitudes")
     sockets = dict(poll.poll(1))
     if MyPeer.socketClient in sockets:
         m = MyPeer.socketClient.recv_json()
@@ -77,7 +78,7 @@ while login:
                 MyPeer.socketClient.send_json({"reply":True,"file":validateDownload})
 
         elif m["request"] == "upload":
-            #quieren guardar un archivo, voy acomprobar si esta en mi responsabilidad
+            #quieren guardar un archivo, voy a comprobar si esta en mi responsabilidad
             validationUpload = MyPeer.validateResposibility(m)
             
             if validationUpload == False:
@@ -92,15 +93,17 @@ while login:
         elif m["request"] == "print":
             cadena = MyPeer.printPeer()
             print(MyPeer.__str__())
+            MyPeer.socketClient.send_json({"reply":cadena})
+
+        elif m["request"] == "next":
             MyPeer.socketSuccessor.send_json({"request":"client"})
-            print("el mensaje se envio")
             dirC = MyPeer.socketSuccessor.recv_json()
             dirC = dirC["client"]
-            MyPeer.socketClient.send_json({"reply":cadena,"nextIp":dirC})
-
+            MyPeer.socketClient.send_json({"reply":dirC})
+            
     elif MyPeer.socketPredecessor in sockets:
         m = MyPeer.socketPredecessor.recv_json()
-        print("recibo y enterado")
+    
         if m["request"] == "ip":
             MyPeer.socketPredecessor.send_json({"ip":MyPeer.myIp})
         

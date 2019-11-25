@@ -21,9 +21,9 @@ class Peer:
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "7007"  #5555    7777    7007
-        self.portPredecessor = "8008"  #4444    8888    8008
-        self.portSuccessor =   "8008"  #4444    8888    8008
+        self.portClient =      "7777"  #5555    7777    7007
+        self.portPredecessor = "8888"  #4444    8888    8008
+        self.portSuccessor =   "8888"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = id
@@ -32,6 +32,8 @@ class Peer:
         self.socketPredecessor.bind("tcp://*:"+self.portPredecessor)
         self.socketClient.bind("tcp://*:"+self.portClient)
         self.socketSuccessor.connect("tcp://"+self.myIp+":"+self.portSuccessor)
+
+        self.makeDirectory()
         #self.socketPredecessor.bind("tcp://*:"+self.portPredecessor)
 
     def __str__(self):
@@ -61,7 +63,7 @@ class Peer:
 
     def setSuccessor(self,S,id):
         #recibe una cadena con dir ip + puerto para asignar a este como mi sucesor
-        
+        self.socketSuccessor.disconnect("tcp://"+self.myIp+":"+self.portSuccessor)
         self.socketSuccessor.connect("tcp://"+S)
         self.ipSuccessor, self.portSuccessor = S.split(':')
         self.idSuccessor = id
@@ -106,7 +108,7 @@ class Peer:
         print("intentando ingresar")
         #dir es la direcion a donde voy a solicitar mi ingreso por primera vez
 
-        dir = "192.168.0.10" + ":" + "5555"
+        dir = "192.168.10.179" + ":" + "5555"
         
         flag = False
 
@@ -146,24 +148,8 @@ class Peer:
         else:
             return False
 
-    def validateDownload(self,m):
-        #calcular el id del archivo
-        id = (int(m["name"], 16) % (1024 * 1024))
-        #esta validacion no aplica para el ultimo nodo de mayor id
-        #ya que no tiene en cuenta un subconjunto de resposabilidad
-        if id >= self.R[0] and id < self.R[1]:
-            return self.sendFile(m)
-        else:
-            return False
-        
-    def validateUpload(self,m):
-        id = m["id"]
-        #esta validacion no aplica para el ultimo nodo de mayor id
-        #ya que no tiene en cuenta un subconjunto de resposabilidad
-        if id >= self.R[0] and id < self.R[1]:
-            return self.saveFile(m["name"],m["content"])
-        else:
-            return False
+
+
    
     def printPeer(self):
         cadena = "Soy el nodo : {}  con sucesor :{} ".format(self.id,self.idSuccessor)
@@ -182,11 +168,33 @@ class Peer:
         PATH = ruta
     
     def saveFile(self,name,content):
+        #Recibe un nombre y bytes para guardar un archivo en la carpeta con ruta PATH
         with open(PATH+'/'+ name, 'wb') as f:
             f.write(content)
             f.close()    
         return True
+
+    def validateUpload(self,m):
+        id = (int(m["name"], 16) % (1024 * 1024))
+
+        #esta validacion no aplica para el ultimo nodo de mayor id
+        #ya que no tiene en cuenta un subconjunto de resposabilidad
+        if id >= self.R[0] and id < self.R[1]:
+            return self.saveFile(m["name"],m["content"])
+        else:
+            return False
+
+    def validateDownload(self,m):
+        #calcular el id del archivo
+        id = (int(m["name"], 16) % (1024 * 1024))
+        #esta validacion no aplica para el ultimo nodo de mayor id
+        #ya que no tiene en cuenta un subconjunto de resposabilidad
+        if id >= self.R[0] and id < self.R[1]:
+            return self.sendFile(m)
+        else:
+            return False
         
+    
     def sendFile(self,m):
         #recibe el nombre de un achivo y lo retorna si lo contiene
         name = m["name"]
