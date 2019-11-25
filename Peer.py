@@ -14,8 +14,8 @@ class Peer:
         self.id = id
         self.myIp = self.getIp()
 
-        #Define los limites de resposabilidad, R[0] Lim Inferior , R[1] Lim Superior
-        self.R = []
+        #Define los limites de resposabilidad, R[0] Lim Inferior , R[1] Lim Superior (es el mismo id)
+        self.R = [id,id]
         # Sockets del peer
         self.socketClient = ctx.socket(zmq.REP)
         self.socketPredecessor = ctx.socket(zmq.REP)
@@ -68,6 +68,10 @@ class Peer:
         self.ipSuccessor, self.portSuccessor = S.split(':')
         self.idSuccessor = id
 
+    def calculateResposibilities(self,idPredecessor):
+        self.R[1] = self.id
+        self.R[0] = idPredecessor + 1
+
     def validate(self,idNewPeer):
         #si mi sucesor es menor a mi significa que estoy en la frontera
         #aqui se debe hacer uso de la fingertable para siguiente salto, en caso de el nuevo nodo no sea sucesor de este
@@ -79,7 +83,7 @@ class Peer:
             return True
         elif self.id > self.idSuccessor:
             #frontera -- punto de cambio del ultimo al primero
-            if idNewPeer > self.id:
+            if idNewPeer > self.id: 
                 #ejm    NodoActual --> 54    SiguienteNodo --> 1     NuevoNodo--> 56
                 return True
             else:
@@ -120,14 +124,19 @@ class Peer:
             #print("respuesta ",m["reply"])
             if m["reply"] == True:
                 self.setSuccessor(m["S"],m["id"])
+                self.calculateResposibilities(m["myId"])
                 #debo completar el ingreso haciendo el join2
                 conexion.send_json({"request":"join2","S":self.getMyPredecessor(),"id":self.id})
                 _ = conexion.recv_json()
                 print("El nodo ingreso!!!")
+                self.socketSuccessor.send_json(m["reply":"updateR","id":self.myId])
+                _ = self.socketSuccessor.recv_json()
+
                 flag = True
                 break
             elif m["reply"] == False:
                 #me conecto al siguiente cliente
+                conexion.disconnect("tcp://"+ dir)
                 dir = m["nextIp"]
                 
             elif m["reply"] == -1:
@@ -142,15 +151,21 @@ class Peer:
         content = m["content"]
         #esta validacion no aplica para el ultimo nodo de mayor id
         #ya que no tiene en cuenta un subconjunto de resposabilidad
-        if id >= self.R[0] and id < self.R[1]:
-            self.saveFile(name,content)
-            return True
+        if self.R[0] < self.R[1]:
+
+            if id >= self.R[0] and id < self.R[1]:
+                return self.saveFile(name,content)
+                
+            else:
+                return False
         else:
-            return False
+            if (id >= self.R[0] and id > self.R[1]) or (id <= self.R[0] and id < self.R[1]):
+                return self.saveFile(name,content)
+                
+                pass
+            elif :
+                return False
 
-
-
-   
     def printPeer(self):
         cadena = "Soy el nodo : {}  con sucesor :{} ".format(self.id,self.idSuccessor)
         return cadena
@@ -176,25 +191,35 @@ class Peer:
 
     def validateUpload(self,m):
         id = (int(m["name"], 16) % (1024 * 1024))
-
         #esta validacion no aplica para el ultimo nodo de mayor id
         #ya que no tiene en cuenta un subconjunto de resposabilidad
-        if id >= self.R[0] and id < self.R[1]:
-            return self.saveFile(m["name"],m["content"])
+        if self.R[0] < self.R[1]:
+            if id >= self.R[0] and id < self.R[1]:
+                return self.saveFile(m["name"],m["content"])
+            else:
+                return False
         else:
-            return False
+            if (id >= self.R[0] and id > self.R[1]) or (id <= self.R[0] and id < self.R[1]):
+                return self.saveFile(m["name"],m["content"])
+            else:
+                return False
 
     def validateDownload(self,m):
         #calcular el id del archivo
         id = (int(m["name"], 16) % (1024 * 1024))
         #esta validacion no aplica para el ultimo nodo de mayor id
         #ya que no tiene en cuenta un subconjunto de resposabilidad
-        if id >= self.R[0] and id < self.R[1]:
-            return self.sendFile(m)
-        else:
-            return False
-        
-    
+        if self.R[0] < self.R[1]:
+            if id >= self.R[0] and id < self.R[1]:
+                return self.sendFile(m)
+            else:
+                return False
+         else:
+            if (id >= self.R[0] and id > self.R[1]) or (id <= self.R[0] and id < self.R[1]):
+                return self.sendFile(m)
+            else:
+                return False
+                 
     def sendFile(self,m):
         #recibe el nombre de un achivo y lo retorna si lo contiene
         name = m["name"]

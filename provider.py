@@ -27,7 +27,7 @@ def uploadParts(conexion):
                 else:
                     hashContent = hashBytes(content)
                     LISTAPARTES.append(hashContent)
-                    hashContentInt = (int(hashContent, 16) % (1024 * 1024))
+                    hashContentInt = (int(hashContent, 16) % (1024 * 1024)) #reducir de 2²⁵⁶-1  a 2²⁰-1 
                     # Dictionary m to send
                     s = {
                         "request": "upload",
@@ -44,6 +44,7 @@ def uploadParts(conexion):
                         if m["reply"] == True:
                             a == True
                         else:
+                            conexion.disconnect("tcp://"+ dir)
                             dir = m["nextIp"]
                     
         DIC[archive] = LISTAPARTES        

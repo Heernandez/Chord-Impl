@@ -40,7 +40,7 @@ while login:
 
             if validation == True:
                 #va despues de mi, le envio direccion de mi sucesor para que sea su sucesor
-                MyPeer.socketClient.send_json({"reply":True,"S":MyPeer.getMySuccessor(),"id":MyPeer.idSuccessor})
+                MyPeer.socketClient.send_json({"reply":True,"S":MyPeer.getMySuccessor(),"id":MyPeer.idSuccessor,"myId":MyPeer.getId()})
                 #el cliente luego debe mandar un join2
             
             elif validation == False:
@@ -119,9 +119,11 @@ while login:
             #recibo solicitud de cual es mi ip+puerto por la cual atiendo clientes
             MyPeer.socketPredecessor.send_json({"client":MyPeer.getMyClient()})
         
-        elif m["request"] == "updateFT":
+        elif m["request"] == "updateR":
             #recibe el id de su predecesor para recalcular las responsabilidades
             #y en caso tal enviar los archivos que deban cambiar de dueño
-            pass
+            MyPeer.calculateResposibilities(m["id"])
+            MyPeer.socketPredecessor.send_json({"reply":"ok"})
+            
         
         #end behavioral
