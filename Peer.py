@@ -1,21 +1,29 @@
 import zmq
+import os
 import socket as sk
 ctx = zmq.Context()
+
+PATH = ""
+MYLIST = []
 
 class Peer:
 
     def __init__(self,id):
+        
         # Id del nodo
         self.id = id
         self.myIp = self.getIp()
+
+        #Define los limites de resposabilidad, R[0] Lim Inferior , R[1] Lim Superior
+        self.R = []
         # Sockets del peer
         self.socketClient = ctx.socket(zmq.REP)
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "5555"  #5555    7777
-        self.portPredecessor = "4444"  #4444    8888
-        self.portSuccessor =   "4444"  #4444    8888
+        self.portClient =      "7007"  #5555    7777    7007
+        self.portPredecessor = "8008"  #4444    8888    8008
+        self.portSuccessor =   "8008"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = id
@@ -30,6 +38,7 @@ class Peer:
         a = "Node --> {} | Sucesor --> {}".format(self.id,self.idSuccessor)
         b = "SuccessorCon --> {}:{}".format(self.ipSuccessor,self.portSuccessor)
         return a +'\n'+b
+    
     def getIp(self):
         nombre = sk.gethostname()
         direccion = sk.gethostbyname(nombre)
@@ -97,7 +106,7 @@ class Peer:
         print("intentando ingresar")
         #dir es la direcion a donde voy a solicitar mi ingreso por primera vez
 
-        dir = "192.168.17.248" + ":" + "5555"
+        dir = "192.168.0.10" + ":" + "5555"
         
         flag = False
 
@@ -124,6 +133,70 @@ class Peer:
                 flag = False
         return flag
     
+    def validateResponsibility(self,m):
+        #valida si un archivo debe ser guardado por este nodo y de ser asi lo almacena
+        id      = m["id"]
+        name    = m["name"]
+        content = m["content"]
+        #esta validacion no aplica para el ultimo nodo de mayor id
+        #ya que no tiene en cuenta un subconjunto de resposabilidad
+        if id >= self.R[0] and id < self.R[1]:
+            self.saveFile(name,content)
+            return True
+        else:
+            return False
+
+    def validateDownload(self,m):
+        #calcular el id del archivo
+        id = (int(m["name"], 16) % (1024 * 1024))
+        #esta validacion no aplica para el ultimo nodo de mayor id
+        #ya que no tiene en cuenta un subconjunto de resposabilidad
+        if id >= self.R[0] and id < self.R[1]:
+            return self.sendFile(m)
+        else:
+            return False
+        
+    def validateUpload(self,m):
+        id = m["id"]
+        #esta validacion no aplica para el ultimo nodo de mayor id
+        #ya que no tiene en cuenta un subconjunto de resposabilidad
+        if id >= self.R[0] and id < self.R[1]:
+            return self.saveFile(m["name"],m["content"])
+        else:
+            return False
+   
     def printPeer(self):
         cadena = "Soy el nodo : {}  con sucesor :{} ".format(self.id,self.idSuccessor)
         return cadena
+    
+    def makeDirectory(self):
+        #crear un directorio con la ip + el id del peer donde se van a guardar la informacion
+        global PATH
+        directorio = os.getcwd()        
+        carpeta = "/" + str(self.myIp) + ":" + str(self.id)
+        ruta = directorio+carpeta
+        try:    
+            os.stat(ruta)
+        except:
+            os.mkdir(ruta)
+        PATH = ruta
+    
+    def saveFile(self,name,content):
+        with open(PATH+'/'+ name, 'wb') as f:
+            f.write(content)
+            f.close()    
+        return True
+        
+    def sendFile(self,m):
+        #recibe el nombre de un achivo y lo retorna si lo contiene
+        name = m["name"]
+        fileList = os.listdir(PATH)
+        content = None
+        if name in fileList:
+        
+            with open(PATH + '/'+ name,'rb') as f:
+                content = f.read()
+                f.close()
+            return content
+        else:
+            return False

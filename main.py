@@ -2,10 +2,10 @@ from Peer import Peer
 import zmq
 
 firstPeer = True
-#firstPeer = False
+firstPeer = False
 
 ctx = zmq.Context()
-MyPeer = Peer(1)
+MyPeer = Peer(7)
 poll = zmq.Poller()
 
 '''
@@ -30,6 +30,7 @@ while login:
     if MyPeer.socketClient in sockets:
         m = MyPeer.socketClient.recv_json()
         print("Peticion {}  de nodo :{}".format(m["request"],m["id"]))
+        
         if m["request"] == "join":
             #aqui recibo solicitud de unirse, si el que se une debe ir despues de mi
             #le valido y le envio mi sucesor
@@ -57,29 +58,49 @@ while login:
             #para que lo asocie como mi nuevo sucesor y ademas envia su id
             MyPeer.setSuccessor(m["S"],m["id"])
             MyPeer.socketClient.send_json({"reply":"ok"})
-
+            print(MyPeer.__str__())
+            print("\n\n")
+        
         elif m["request"] == "download":
             #recibo solicitud de descarga de un archivo
-            pass
-        
+            #recibo un mensaje con id archivo y nombre(Hash),porque compruebo 
+            #con id si esta en mi pertenencia
+            validateDownload = MyPeer.validateDownload(m)
+            
+            if isinstance(validateDownload,bool):
+                #no esta en esta posicion, debe avanzar al siguiente nodo para intentar guardar
+                MyPeer.socketSuccessor.send_json({"request":"client"})
+                dirC = MyPeer.socketSuccessor.recv_json()
+                dirC = dirC["client"]
+                MyPeer.socketClient.send_json({"reply":False,"nextIp":dirC})
+            else:
+                MyPeer.socketClient.send_json({"reply":True,"file":validateDownload})
+
         elif m["request"] == "upload":
             #quieren guardar un archivo, voy acomprobar si esta en mi responsabilidad
-            validationUpload = MyPeer.validateResposibility(m["id"],)
-
-
+            validationUpload = MyPeer.validateResposibility(m)
+            
+            if validationUpload == False:
+                #no va en esta posicion, debe avanzar al siguiente nodo para intentar guardar
+                MyPeer.socketSuccessor.send_json({"request":"client"})
+                dirC = MyPeer.socketSuccessor.recv_json()
+                dirC = dirC["client"]
+                MyPeer.socketClient.send_json({"reply":False,"nextIp":dirC})
+            else:
+                MyPeer.socketClient.send_json({"reply":True})
 
         elif m["request"] == "print":
             cadena = MyPeer.printPeer()
             print(MyPeer.__str__())
             MyPeer.socketSuccessor.send_json({"request":"client"})
+            print("el mensaje se envio")
             dirC = MyPeer.socketSuccessor.recv_json()
             dirC = dirC["client"]
-            print("ahi tenes")
-            MyPeer.socketClient.send_json({"string":cadena,"next":dirC})
+            MyPeer.socketClient.send_json({"reply":cadena,"nextIp":dirC})
 
     elif MyPeer.socketPredecessor in sockets:
         m = MyPeer.socketPredecessor.recv_json()
-        
+        print("recibo y enterado")
         if m["request"] == "ip":
             MyPeer.socketPredecessor.send_json({"ip":MyPeer.myIp})
         
