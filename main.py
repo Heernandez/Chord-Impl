@@ -5,7 +5,7 @@ firstPeer = True
 firstPeer = False
 
 ctx = zmq.Context()
-MyPeer = Peer(15)
+MyPeer = Peer(2)
 poll = zmq.Poller()
 
 '''
@@ -78,8 +78,9 @@ while login:
                 MyPeer.socketClient.send_json({"reply":True,"file":validateDownload})
 
         elif m["request"] == "upload":
-            #quieren guardar un archivo, voy a comprobar si esta en mi responsabilidad
-            validationUpload = MyPeer.validateResposibility(m)
+            print("solicitud para guardar {}".format(m["id"]))
+            
+            validationUpload = MyPeer.validateUpload(m)
             
             if validationUpload == False:
                 #no va en esta posicion, debe avanzar al siguiente nodo para intentar guardar
@@ -88,7 +89,13 @@ while login:
                 dirC = dirC["client"]
                 MyPeer.socketClient.send_json({"reply":False,"nextIp":dirC})
             else:
+                print("entro aqui")
                 MyPeer.socketClient.send_json({"reply":True})
+                X = MyPeer.socketClient.recv_multipart()
+                _ = MyPeer.saveFile(m["name"],X[0])
+                MyPeer.socketClient.send_multipart([b'0'])
+            
+            #MyPeer.socketClient.send_json({"reply":True})
 
         elif m["request"] == "print":
             cadena = MyPeer.printPeer()
@@ -122,7 +129,7 @@ while login:
         elif m["request"] == "updateR":
             #recibe el id de su predecesor para recalcular las responsabilidades
             #y en caso tal enviar los archivos que deban cambiar de dueño
-            MyPeer.calculateResposibilities(m["id"])
+            MyPeer.calculateResponsibilities(m["id"])
             MyPeer.socketPredecessor.send_json({"reply":"ok"})
             
         

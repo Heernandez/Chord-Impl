@@ -21,9 +21,9 @@ class Peer:
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "7777"  #5555    7777    7007
-        self.portPredecessor = "8888"  #4444    8888    8008
-        self.portSuccessor =   "8888"  #4444    8888    8008
+        self.portClient =      "7555"  #5555    7777    7007
+        self.portPredecessor = "7000"  #4444    8888    8008
+        self.portSuccessor =   "7000"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = id
@@ -68,8 +68,7 @@ class Peer:
         self.ipSuccessor, self.portSuccessor = S.split(':')
         self.idSuccessor = id
 
-    def calculateResposibilities(self,idPredecessor):
-        self.R[1] = self.id
+    def calculateResponsibilities(self,idPredecessor):
         self.R[0] = idPredecessor + 1
 
     def validate(self,idNewPeer):
@@ -112,7 +111,7 @@ class Peer:
         print("intentando ingresar")
         #dir es la direcion a donde voy a solicitar mi ingreso por primera vez
 
-        dir = "192.168.10.179" + ":" + "5555"
+        dir = "192.168.0.4" + ":" + "5555"
         
         flag = False
 
@@ -124,12 +123,12 @@ class Peer:
             #print("respuesta ",m["reply"])
             if m["reply"] == True:
                 self.setSuccessor(m["S"],m["id"])
-                self.calculateResposibilities(m["myId"])
+                self.calculateResponsibilities(m["myId"])
                 #debo completar el ingreso haciendo el join2
                 conexion.send_json({"request":"join2","S":self.getMyPredecessor(),"id":self.id})
                 _ = conexion.recv_json()
                 print("El nodo ingreso!!!")
-                self.socketSuccessor.send_json(m["reply":"updateR","id":self.myId])
+                self.socketSuccessor.send_json({"request":"updateR","id":self.id})
                 _ = self.socketSuccessor.recv_json()
 
                 flag = True
@@ -153,21 +152,20 @@ class Peer:
         #ya que no tiene en cuenta un subconjunto de resposabilidad
         if self.R[0] < self.R[1]:
 
-            if id >= self.R[0] and id < self.R[1]:
+            if id > self.R[0] and id <= self.R[1]:
                 return self.saveFile(name,content)
                 
             else:
                 return False
         else:
-            if (id >= self.R[0] and id > self.R[1]) or (id <= self.R[0] and id < self.R[1]):
+            #si es el nodo frontera
+            if (id > self.R[0] and id >= self.R[1]) or (id < self.R[0] and id <= self.R[1]):
                 return self.saveFile(name,content)
-                
-                pass
-            elif :
+            else :
                 return False
 
     def printPeer(self):
-        cadena = "Soy el nodo : {}  con sucesor :{} ".format(self.id,self.idSuccessor)
+        cadena = "Soy el nodo : {}  con sucesor :{} \n y responsabilidades {}".format(self.id,self.idSuccessor,self.R)
         return cadena
     
     def makeDirectory(self):
@@ -183,6 +181,7 @@ class Peer:
         PATH = ruta
     
     def saveFile(self,name,content):
+        #content = content.decode('utf-8')
         #Recibe un nombre y bytes para guardar un archivo en la carpeta con ruta PATH
         with open(PATH+'/'+ name, 'wb') as f:
             f.write(content)
@@ -190,17 +189,20 @@ class Peer:
         return True
 
     def validateUpload(self,m):
-        id = (int(m["name"], 16) % (1024 * 1024))
+        #id = (int(m["name"], 16) % (1024 * 1024))
         #esta validacion no aplica para el ultimo nodo de mayor id
         #ya que no tiene en cuenta un subconjunto de resposabilidad
+        id = m["id"]
         if self.R[0] < self.R[1]:
-            if id >= self.R[0] and id < self.R[1]:
-                return self.saveFile(m["name"],m["content"])
+            if id > self.R[0] and id <= self.R[1]:
+                return  True
+                #return self.saveFile(m["name"],m["content"])
             else:
                 return False
         else:
-            if (id >= self.R[0] and id > self.R[1]) or (id <= self.R[0] and id < self.R[1]):
-                return self.saveFile(m["name"],m["content"])
+            if (id > self.R[0] and id > self.R[1]) or (id < self.R[0] and id <= self.R[1]):
+                return True
+                #return self.saveFile(m["name"],m["content"])
             else:
                 return False
 
@@ -210,12 +212,12 @@ class Peer:
         #esta validacion no aplica para el ultimo nodo de mayor id
         #ya que no tiene en cuenta un subconjunto de resposabilidad
         if self.R[0] < self.R[1]:
-            if id >= self.R[0] and id < self.R[1]:
+            if id > self.R[0] and id <= self.R[1]:
                 return self.sendFile(m)
             else:
                 return False
-         else:
-            if (id >= self.R[0] and id > self.R[1]) or (id <= self.R[0] and id < self.R[1]):
+        else:
+            if (id > self.R[0] and id > self.R[1]) or (id < self.R[0] and id <= self.R[1]):
                 return self.sendFile(m)
             else:
                 return False

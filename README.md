@@ -1,2 +1,2 @@
 # Chord-Protocol
-Implementation of file server with protocol chord, to make a final project in client server
+Implementation of Chord Protocol to make a final project to client server course 
