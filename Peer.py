@@ -58,6 +58,7 @@ class Peer:
 
         self.makeDirectory()
         #self.socketPredecessor.bind("tcp://*:"+self.portPredecessor)
+        print("mi ruta :",PATH)
 
     def __str__(self):
         a = "Node --> {} | Sucesor --> {}".format(self.id,self.idSuccessor)
@@ -154,7 +155,9 @@ class Peer:
                 print("El nodo ingreso!!!")
                 self.socketSuccessor.send_json({"request":"updateR","id":self.id})
                 _ = self.socketSuccessor.recv_json()
-
+                
+                #Hablar con mi sucesor para comprobar si me debe enviar archivos
+                self.negotiateFiles()
                 flag = True
                 break
             elif m["reply"] == False:
@@ -165,6 +168,7 @@ class Peer:
             elif m["reply"] == -1:
                 print("Acceso a la red no permitido")
                 flag = False
+                break
         return flag
     
     def validateResponsibility(self,m):
@@ -259,3 +263,56 @@ class Peer:
             return content
         else:
             return False
+    
+    def checkFiles(self):
+        # Reviso que archivo no me pertenece para enviarlo de regreso
+        fileList = os.listdir(PATH)
+        fileToSend = []
+        if len(fileList) == 0:
+            return False
+        else:
+            for file in fileList:
+                fileNameToInt = int(file, 16)  % (1024*1024*1024) # nombre hash convertido a  numero (id del archivo)
+                dic = {"id":fileNameToInt}
+                if self.validateUpload(dic):
+                    pass
+                else:
+                    fileToSend.append(file)
+        #en fileToSend estan los nombres de los archivos que no pertenencen a este nodo si no a su predecesor
+        if len(fileToSend) == 0:
+            # Todos pertenencen
+            return False
+        else:
+            #se los tengo que enviar
+            self.socketPredecessor.send_json({"reply":True,"cant":len(fileToSend)})
+    
+            #procedo a enviar archivo por archivo
+            for x in fileToSend:
+                _ = self.socketPredecessor.recv_string()
+                with open(PATH + '/' + x,'rb') as f:
+                    content = f.read()
+                    self.socketPredecessor.send_multipart([x.encode('utf-8'),content])
+                    f.close()
+                os.remove(PATH + '/'+ x) # Borro el archivo
+            _ = self.socketPredecessor.recv_string()
+            
+        pass
+
+    def negotiateFiles(self):
+        # Hecha la conexion con el sucesor, le pregunto que tiene para mi
+        self.socketSuccessor.send_json({"request":"WNO"})
+        m = self.socketSuccessor.recv_json()
+        if m["reply"] == False:
+            return False
+        else:
+            iteration = m["cant"] # Cantidad de archivos a recibir
+            self.socketSuccessor.send_string("ok")
+            for i in range(iteration):
+                F = self.socketSuccessor.recv_multipart()
+                self.saveFile(F[0].decode('utf-8'),F[1])
+                self.socketSuccessor.send_string("ok")
+            return True
+
+
+
+

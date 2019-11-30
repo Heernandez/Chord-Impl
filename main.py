@@ -132,4 +132,15 @@ while login:
             MyPeer.calculateResponsibilities(m["id"])
             MyPeer.socketPredecessor.send_json({"reply":"ok"})
         
+        elif m["request"] == "WNO":
+            print("Hora de Chequeo")
+            #mi predecesor me pregunta ... What's New Oldman ...
+            # reviso si tengo archivos de su pertenencia
+            check = MyPeer.checkFiles()
+            if check == False:
+                MyPeer.socketPredecessor.send_json({"reply":False})
+            else:
+                print("se realizaron envios")
+                pass
+                
         #end behavioral
