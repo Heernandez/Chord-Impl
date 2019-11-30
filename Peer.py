@@ -34,15 +34,18 @@ class Peer:
         self.myIp = self.getIp()
         self.id = generation(self.myIp)
         #Define los limites de resposabilidad, R[0] Lim Inferior , R[1] Lim Superior (es el mismo id)
-        self.R = [self.id,self.id]
+        
+        self.R = [self.id + 1,self.id]
+        #self.R = [1073741823,1073741822 - 1]
+
         # Sockets del peer
         self.socketClient = ctx.socket(zmq.REP)
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "7555"  #5555    7777    7007
-        self.portPredecessor = "7000"  #4444    8888    8008
-        self.portSuccessor =   "7000"  #4444    8888    8008
+        self.portClient =      "8555"  #5555    7777    7007
+        self.portPredecessor = "8000"  #4444    8888    8008
+        self.portSuccessor =   "8000"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = self.id
@@ -90,6 +93,7 @@ class Peer:
 
     def calculateResponsibilities(self,idPredecessor):
         self.R[0] = idPredecessor + 1
+        # Revisar si tengo archivos para que mi predecesor los almacene
 
     def validate(self,idNewPeer):
         #si mi sucesor es menor a mi significa que estoy en la frontera
@@ -130,7 +134,7 @@ class Peer:
     def join(self):
         print("intentando ingresar")
         #dir es la direcion a donde voy a solicitar mi ingreso por primera vez
-
+        #   127.0.0.1
         dir = "192.168.0.4" + ":" + "5555"
         
         flag = False

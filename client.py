@@ -13,7 +13,7 @@ conexion = ctx.socket(zmq.REQ)
 def printChord(conexion):
     #se conecta una ip en espcifico
     dir = "192.168.0.4" + ":" + "5555"
-    for i in range(2):
+    for i in range(4):
         conexion.connect("tcp://"+ dir)
         conexion.send_json({"request":"print","id":101010})
         m = conexion.recv_json()
@@ -25,6 +25,7 @@ def printChord(conexion):
         
         conexion.disconnect("tcp://"+ dir)
         dir = m["reply"]
+        
 
 
 printChord(conexion)

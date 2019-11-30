@@ -19,6 +19,9 @@ def hashBytes(s):
     sha.update(s)
     return sha.hexdigest()
 
+
+
+
 def uploadParts(conexion):
     global DIC
     variable = 0
@@ -33,24 +36,21 @@ def uploadParts(conexion):
                 if not content:
                     break
                 else:
-                    hashContent = hashBytes(content)
+                    hashContent = hashBytes(content) #nombre para guardar
                     LISTAPARTES.append(hashContent)
-                    hashContentInt = int(hashContent, 16) % (1024*1024*1024) #reducir de 2²⁵⁶-1  a 2²⁰-1 
-                    #print(hashContentInt)
-                    
-                    # Dictionary m to send
-                    _ = input("espere .. nueva parte")
-                    
+                    hashContentInt = int(hashContent, 16)  % (1024*1024*1024) #reducir de 2²⁵⁶-1  a 2²⁰-1 
+                                                                              # numero maximo es 1073741823
+                  
                     s = {
                         "request": "upload",
-                        "id": variable,#hashContentInt,
+                        "id": hashContentInt,
                         "name": hashContent
                         #"content": content
                     }
-                    print("id : {}".format(hashContentInt))
                     
                     dir = "192.168.0.4" + ":" + "5555"
                     a = False
+                    #Envio de la parte del archivo
                     while a == False: 
                         conexion.connect("tcp://"+ dir)
                         conexion.send_json(s) 
@@ -59,18 +59,16 @@ def uploadParts(conexion):
                             a == True
                             variable+=1
                             conexion.send_multipart([content])
-                            _ = conexion.recv_string()
+                            _ = conexion.recv_multipart()
                             break
                         else:
                             conexion.disconnect("tcp://"+ dir)
                             dir = m["nextIp"]
                             
-                    
                     conexion.disconnect("tcp://"+ dir)
                     
         DIC[archive] = LISTAPARTES        
         print("repartido!!!")
-
 
 conexion = ctx.socket(zmq.REQ)
 uploadParts((conexion))
