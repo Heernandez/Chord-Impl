@@ -1,21 +1,40 @@
 import zmq
 import os
 import socket as sk
+import hashlib
+import random
+import string
 ctx = zmq.Context()
+
+
+def hashName(id):
+    # Recibe la ip concatenada con una cadena aleatoria de 25 caracteres y devuelve el hash
+    sha = hashlib.sha256()
+    sha.update(id.encode('ascii'))
+    return sha.hexdigest()
+
+def generation(ip, size = 25):
+    # Recibe una ip y le concatena una cadena aleatoria de 25 caracteres
+    answer = ''.join(random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits)
+                      for x in range(size))
+    attempt = ip + answer
+    hashN = hashName(answer)
+    hashInt = int(hashN, 16) % (1024*1024*1024)
+    return hashInt
 
 PATH = ""
 MYLIST = []
 
 class Peer:
 
-    def __init__(self,id):
+    def __init__(self):
         
         # Id del nodo
-        self.id = id
+        
         self.myIp = self.getIp()
-
+        self.id = generation(self.myIp)
         #Define los limites de resposabilidad, R[0] Lim Inferior , R[1] Lim Superior (es el mismo id)
-        self.R = [id,id]
+        self.R = [self.id,self.id]
         # Sockets del peer
         self.socketClient = ctx.socket(zmq.REP)
         self.socketPredecessor = ctx.socket(zmq.REP)
@@ -26,7 +45,8 @@ class Peer:
         self.portSuccessor =   "7000"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
-        self.idSuccessor = id
+        self.idSuccessor = self.id
+        
         
         
         self.socketPredecessor.bind("tcp://*:"+self.portPredecessor)

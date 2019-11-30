@@ -1,3 +1,8 @@
+'''
+Author : Luis H 
+         Sebastian V
+'''
+
 import zmq
 import os
 import json
@@ -7,8 +12,6 @@ ctx = zmq.Context()
 FILES = os.listdir(os.getcwd()+"/provider")
 CANT = 1024*1024
 DIC = {}
-
-conexion = ctx.socket(zmq.REQ)
 
 def hashBytes(s):
     # Recibe una cadena y calcula el sha256
@@ -67,5 +70,8 @@ def uploadParts(conexion):
                     
         DIC[archive] = LISTAPARTES        
         print("repartido!!!")
+
+
+conexion = ctx.socket(zmq.REQ)
 uploadParts((conexion))
 #print (DIC)  

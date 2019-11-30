@@ -5,7 +5,7 @@ firstPeer = True
 firstPeer = False
 
 ctx = zmq.Context()
-MyPeer = Peer(2)
+MyPeer = Peer()
 poll = zmq.Poller()
 
 '''
@@ -131,6 +131,5 @@ while login:
             #y en caso tal enviar los archivos que deban cambiar de dueño
             MyPeer.calculateResponsibilities(m["id"])
             MyPeer.socketPredecessor.send_json({"reply":"ok"})
-            
         
         #end behavioral
