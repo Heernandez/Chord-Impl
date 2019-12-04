@@ -23,7 +23,6 @@ def generation(ip, size = 25):
     return hashInt
 
 PATH = ""
-MYLIST = []
 
 class Peer:
 
@@ -36,16 +35,15 @@ class Peer:
         #Define los limites de resposabilidad, R[0] Lim Inferior , R[1] Lim Superior (es el mismo id)
         
         self.R = [self.id + 1,self.id]
-        #self.R = [1073741823,1073741822 - 1]
 
         # Sockets del peer
         self.socketClient = ctx.socket(zmq.REP)
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "8555"  #5555    7777    7007
-        self.portPredecessor = "8000"  #4444    8888    8008
-        self.portSuccessor =   "8000"  #4444    8888    8008
+        self.portClient =      "9655"  #5555    7777    7007
+        self.portPredecessor = "9600"  #4444    8888    8008
+        self.portSuccessor =   "9600"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = self.id
@@ -63,7 +61,8 @@ class Peer:
     def __str__(self):
         a = "Node --> {} | Sucesor --> {}".format(self.id,self.idSuccessor)
         b = "SuccessorCon --> {}:{}".format(self.ipSuccessor,self.portSuccessor)
-        return a +'\n'+b
+        print("Soy el nodo : {}  con sucesor :{} \n y responsabilidades {}".format(self.id,self.idSuccessor,self.R))
+        #return a +'\n'+b
     
     def getIp(self):
         nombre = sk.gethostname()
@@ -136,25 +135,25 @@ class Peer:
         print("intentando ingresar")
         #dir es la direcion a donde voy a solicitar mi ingreso por primera vez
         #   127.0.0.1
-        dir = "192.168.0.4" + ":" + "5555"
+        dir = "127.0.0.1" + ":" + "5555"
         
         flag = False
 
         conexion = ctx.socket(zmq.REQ)
         while True:
             conexion.connect("tcp://"+ dir)
-            conexion.send_json({"request":"join","id":self.id})
-            m = conexion.recv_json()
+            conexion.send_pyobj({"request":"join","id":self.id})
+            m = conexion.recv_pyobj()
             #print("respuesta ",m["reply"])
             if m["reply"] == True:
                 self.setSuccessor(m["S"],m["id"])
                 self.calculateResponsibilities(m["myId"])
                 #debo completar el ingreso haciendo el join2
-                conexion.send_json({"request":"join2","S":self.getMyPredecessor(),"id":self.id})
-                _ = conexion.recv_json()
+                conexion.send_pyobj({"request":"join2","S":self.getMyPredecessor(),"id":self.id})
+                _ = conexion.recv_pyobj()
                 print("El nodo ingreso!!!")
-                self.socketSuccessor.send_json({"request":"updateR","id":self.id})
-                _ = self.socketSuccessor.recv_json()
+                self.socketSuccessor.send_pyobj({"request":"updateR","id":self.id})
+                _ = self.socketSuccessor.recv_pyobj()
                 
                 #Hablar con mi sucesor para comprobar si me debe enviar archivos
                 self.negotiateFiles()
@@ -171,30 +170,8 @@ class Peer:
                 break
         return flag
     
-    def validateResponsibility(self,m):
-        #valida si un archivo debe ser guardado por este nodo y de ser asi lo almacena
-        id      = m["id"]
-        name    = m["name"]
-        content = m["content"]
-        #esta validacion no aplica para el ultimo nodo de mayor id
-        #ya que no tiene en cuenta un subconjunto de resposabilidad
-        if self.R[0] < self.R[1]:
-
-            if id > self.R[0] and id <= self.R[1]:
-                return self.saveFile(name,content)
-                
-            else:
-                return False
-        else:
-            #si es el nodo frontera
-            if (id > self.R[0] and id >= self.R[1]) or (id < self.R[0] and id <= self.R[1]):
-                return self.saveFile(name,content)
-            else :
-                return False
-
     def printPeer(self):
-        cadena = "Soy el nodo : {}  con sucesor :{} \n y responsabilidades {}".format(self.id,self.idSuccessor,self.R)
-        return cadena
+        return self.id
     
     def makeDirectory(self):
         #crear un directorio con la ip + el id del peer donde se van a guardar la informacion
@@ -218,27 +195,21 @@ class Peer:
 
     def validateUpload(self,m):
         #id = (int(m["name"], 16) % (1024 * 1024))
-        #esta validacion no aplica para el ultimo nodo de mayor id
-        #ya que no tiene en cuenta un subconjunto de resposabilidad
         id = m["id"]
         if self.R[0] < self.R[1]:
             if id > self.R[0] and id <= self.R[1]:
                 return  True
-                #return self.saveFile(m["name"],m["content"])
             else:
                 return False
         else:
             if (id > self.R[0] and id > self.R[1]) or (id < self.R[0] and id <= self.R[1]):
                 return True
-                #return self.saveFile(m["name"],m["content"])
             else:
                 return False
 
     def validateDownload(self,m):
         #calcular el id del archivo
         id = (int(m["name"], 16) % (1024 * 1024))
-        #esta validacion no aplica para el ultimo nodo de mayor id
-        #ya que no tiene en cuenta un subconjunto de resposabilidad
         if self.R[0] < self.R[1]:
             if id > self.R[0] and id <= self.R[1]:
                 return self.sendFile(m)
@@ -264,12 +235,12 @@ class Peer:
         else:
             return False
     
-    def checkFiles(self):
+    def checkFiles(self,m):
         # Reviso que archivo no me pertenece para enviarlo de regreso
         fileList = os.listdir(PATH)
         fileToSend = []
         if len(fileList) == 0:
-            return False
+            pass
         else:
             for file in fileList:
                 fileNameToInt = int(file, 16)  % (1024*1024*1024) # nombre hash convertido a  numero (id del archivo)
@@ -281,38 +252,35 @@ class Peer:
         #en fileToSend estan los nombres de los archivos que no pertenencen a este nodo si no a su predecesor
         if len(fileToSend) == 0:
             # Todos pertenencen
-            return False
+            pass
         else:
             #se los tengo que enviar
-            self.socketPredecessor.send_json({"reply":True,"cant":len(fileToSend)})
-    
-            #procedo a enviar archivo por archivo
+            conexion = ctx.socket(zmq.REQ)
+            conexion.connect("tcp://"+ m["myClient"])
+            #conexion.send_pyobj({"request":"upload","id":self.id})
             for x in fileToSend:
-                _ = self.socketPredecessor.recv_string()
                 with open(PATH + '/' + x,'rb') as f:
                     content = f.read()
-                    self.socketPredecessor.send_multipart([x.encode('utf-8'),content])
                     f.close()
+               
+                hashContentInt = int(x, 16)  % (1024*1024*1024) #reducir de 2²⁵⁶-1  a 2²⁰-1 
+                s = {
+                    "request": "upload",
+                    "id": hashContentInt,
+                    "name": x,
+                    "bytes": content
+                }
+                conexion.send_pyobj(s)
+                _ = conexion.recv_pyobj()
                 os.remove(PATH + '/'+ x) # Borro el archivo
-            _ = self.socketPredecessor.recv_string()
             
-        pass
-
+            conexion.disconnect("tcp://"+ m["myClient"])
+                
     def negotiateFiles(self):
         # Hecha la conexion con el sucesor, le pregunto que tiene para mi
-        self.socketSuccessor.send_json({"request":"WNO"})
-        m = self.socketSuccessor.recv_json()
-        if m["reply"] == False:
-            return False
-        else:
-            iteration = m["cant"] # Cantidad de archivos a recibir
-            self.socketSuccessor.send_string("ok")
-            for i in range(iteration):
-                F = self.socketSuccessor.recv_multipart()
-                self.saveFile(F[0].decode('utf-8'),F[1])
-                self.socketSuccessor.send_string("ok")
-            return True
-
+        self.socketSuccessor.send_pyobj({"request":"WNO","myClient":self.getMyClient()})
+        _ = self.socketSuccessor.recv_pyobj()
+        
 
 
 

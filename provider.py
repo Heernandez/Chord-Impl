@@ -40,26 +40,22 @@ def uploadParts(conexion):
                     LISTAPARTES.append(hashContent)
                     hashContentInt = int(hashContent, 16)  % (1024*1024*1024) #reducir de 2²⁵⁶-1  a 2²⁰-1 
                                                                               # numero maximo es 1073741823
-                  
                     s = {
                         "request": "upload",
                         "id": hashContentInt,
-                        "name": hashContent
-                        #"content": content
+                        "name": hashContent,
+                        "bytes": content
                     }
                     
-                    dir = "192.168.0.4" + ":" + "5555"
+                    dir = "127.0.0.1" + ":" + "5555"
                     a = False
                     #Envio de la parte del archivo
                     while a == False: 
                         conexion.connect("tcp://"+ dir)
-                        conexion.send_json(s) 
-                        m = conexion.recv_json()
+                        conexion.send_pyobj(s) 
+                        m = conexion.recv_pyobj()
                         if m['reply'] == True:
                             a == True
-                            variable+=1
-                            conexion.send_multipart([content])
-                            _ = conexion.recv_multipart()
                             break
                         else:
                             conexion.disconnect("tcp://"+ dir)
