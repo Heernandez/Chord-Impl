@@ -2,13 +2,11 @@ from Peer import Peer
 import zmq
 
 firstPeer = True
-firstPeer = False
-
+#firstPeer = False
 
 ctx = zmq.Context()
 MyPeer = Peer()
 poll = zmq.Poller()
-
 '''
     puerto atender al cliente  5555
     puerto atender al predecesor  4444
@@ -70,7 +68,7 @@ while login:
             validateDownload = MyPeer.validateDownload(m)
             
             if isinstance(validateDownload,bool):
-                #no esta en esta posicion, debe avanzar al siguiente nodo para intentar guardar
+                #no esta en esta posicion, debe avanzar al siguiente nodo para intentar descargar
                 MyPeer.socketSuccessor.send_pyobj({"request":"client"})
                 dirC = MyPeer.socketSuccessor.recv_pyobj()
                 dirC = dirC["client"]
@@ -79,7 +77,6 @@ while login:
                 MyPeer.socketClient.send_pyobj({"reply":True,"file":validateDownload})
 
         elif m["request"] == "upload":
-            
             #print("solicitud para guardar {}".format(m["id"]))
             validationUpload = MyPeer.validateUpload(m)
             if validationUpload == False:

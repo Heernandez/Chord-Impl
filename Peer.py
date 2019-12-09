@@ -41,9 +41,9 @@ class Peer:
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "9855"  #5555    7777    7007
-        self.portPredecessor = "9800"  #4444    8888    8008
-        self.portSuccessor =   "9800"  #4444    8888    8008
+        self.portClient =      "5555"  #5555    7777    7007
+        self.portPredecessor = "5000"  #4444    8888    8008
+        self.portSuccessor =   "5000"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = self.id
@@ -209,7 +209,7 @@ class Peer:
 
     def validateDownload(self,m):
         #calcular el id del archivo
-        id = (int(m["name"], 16) % (1024 * 1024))
+        id = (int(m["name"], 16) % (1024 * 1024 * 1024))
         if self.R[0] < self.R[1]:
             if id > self.R[0] and id <= self.R[1]:
                 return self.sendFile(m)
@@ -227,7 +227,6 @@ class Peer:
         fileList = os.listdir(PATH)
         content = None
         if name in fileList:
-        
             with open(PATH + '/'+ name,'rb') as f:
                 content = f.read()
                 f.close()

@@ -1,6 +1,5 @@
 '''
 Author : Luis H
-
 En este script recorremos el anillo
 e imprimimos el numero del nodo y su sucesor
 '''
@@ -26,7 +25,7 @@ def printChord(conexion):
         if len(Grafo) > 1:
             if Grafo[0] == int(m["reply"]):
                 break
-        
+        # Agrego el nodo al grafo 
         Grafo.append(int(m["reply"]))
         conexion.connect("tcp://"+ dir)
         conexion.send_pyobj({"request":"next","id":101010})

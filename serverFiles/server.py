@@ -1,13 +1,22 @@
 import zmq
 
+'''
+Este script ejecuta un servidor que contiene un diccionario que 
+se asemeja a un magnet link 
+
+Un Magnet Link, en contraposición a un .torrent es un archivo que identifica a 
+los archivos a descargar no por su posición en un servidor, 
+sino por el nombre único e inviolable que posee. 
+Los enlaces magnéticos son sólo enlaces, que no tienen los archivos asociados con ellos,
+ sólo datos para descargarlos
+
+
+'''
 context = zmq.Context()
 server = context.socket(zmq.REP)
 server.bind("tcp://*:5555")
 
-tableSongs = {
-    "pa las que sea" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "olvidala" : "5819b005d5c142ae151889bcbe0872bbbdbeecc26c4785a48e65b04abd7a6926"
-}
+tableSongs = {}
 
 while True:
     # wait for request from client

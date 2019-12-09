@@ -1,8 +1,7 @@
 '''
 Author : Luis H 
-         Sebastian V
+        Sebastian V
 '''
-
 import zmq
 import os
 import json
@@ -11,7 +10,6 @@ import hashlib
 ctx = zmq.Context()
 FILES = os.listdir(os.getcwd()+"/provider")
 CANT = 1024*1024
-DIC = {}
 
 def hashBytes(s):
     # Recibe una cadena y calcula el sha256
@@ -19,13 +17,10 @@ def hashBytes(s):
     sha.update(s)
     return sha.hexdigest()
 
-
-
-
 def uploadParts(conexion):
-    global DIC
-    variable = 0
-    for archive in FILES:    
+
+    for archive in FILES:
+        DIC = {}    
         LISTAPARTES = []
         print("------------")
         print("cancion {}".format(archive))
@@ -38,7 +33,7 @@ def uploadParts(conexion):
                 else:
                     hashContent = hashBytes(content) #nombre para guardar
                     LISTAPARTES.append(hashContent)
-                    hashContentInt = int(hashContent, 16)  % (1024*1024*1024) #reducir de 2²⁵⁶-1  a 2²⁰-1 
+                    hashContentInt = int(hashContent, 16)  % (1024*1024*1024 ) #reducir de 2²⁵⁶-1  a 2²⁰-1 
                                                                               # numero maximo es 1073741823
                     s = {
                         "request": "upload",
@@ -64,8 +59,14 @@ def uploadParts(conexion):
                     conexion.disconnect("tcp://"+ dir)
                     
         DIC[archive] = LISTAPARTES        
+        dicString = json.dumps(DIC)
+        
+        with open(archive.split(".")[0]+".chord","w") as f:
+            f.write(dicString)
+            f.close()
+        
         print("repartido!!!")
 
 conexion = ctx.socket(zmq.REQ)
 uploadParts((conexion))
-#print (DIC)  
+
