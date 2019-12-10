@@ -2,7 +2,7 @@ from Peer import Peer
 import zmq
 
 firstPeer = True
-#firstPeer = False
+firstPeer = False
 
 ctx = zmq.Context()
 MyPeer = Peer()
@@ -22,6 +22,7 @@ if firstPeer:
 else:
     print("Se va a unir el Peer con id {}".format(MyPeer.getId()))
     login = MyPeer.join()
+    MyPeer.sendUpdate()
     print(MyPeer.__str__())
 
 while login:
@@ -44,10 +45,14 @@ while login:
             
             elif validation == False:
                 #no va en esta posicion, debe avanzar al siguiente nodo para intentar ingresar
-                MyPeer.socketSuccessor.send_pyobj({"request":"client"})
-                dirC = MyPeer.socketSuccessor.recv_pyobj()
-                dirC = dirC["client"]
-                MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":dirC})
+                a = MyPeer.nextDecition(idNewPeer)
+                if a == False:
+                    MyPeer.socketSuccessor.send_pyobj({"request":"client"})
+                    dirC = MyPeer.socketSuccessor.recv_pyobj()
+                    dirC = dirC["client"]
+                    MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":dirC})
+                else:
+                    MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":a})
                 
             elif validation == -1:
                 #nodo no valido, se deniega ingreso
@@ -69,10 +74,14 @@ while login:
             
             if isinstance(validateDownload,bool):
                 #no esta en esta posicion, debe avanzar al siguiente nodo para intentar descargar
-                MyPeer.socketSuccessor.send_pyobj({"request":"client"})
-                dirC = MyPeer.socketSuccessor.recv_pyobj()
-                dirC = dirC["client"]
-                MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":dirC})
+                a = MyPeer.nextDecition((int(m["name"], 16) % (1024 * 1024 * 1024)))
+                if a == False:
+                    MyPeer.socketSuccessor.send_pyobj({"request":"client"})
+                    dirC = MyPeer.socketSuccessor.recv_pyobj()
+                    dirC = dirC["client"]
+                    MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":dirC})
+                else:
+                    MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":a})
             else:
                 MyPeer.socketClient.send_pyobj({"reply":True,"file":validateDownload})
 
@@ -80,11 +89,17 @@ while login:
             #print("solicitud para guardar {}".format(m["id"]))
             validationUpload = MyPeer.validateUpload(m)
             if validationUpload == False:
-                #no va en esta posicion, debe avanzar al siguiente nodo para intentar guardar
-                MyPeer.socketSuccessor.send_pyobj({"request":"client"})
-                dirC = MyPeer.socketSuccessor.recv_pyobj()
-                dirC = dirC["client"]
-                MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":dirC})
+                a = MyPeer.nextDecition(m["id"])
+                if a == False:
+                        
+                    #no va en esta posicion, debe avanzar al siguiente nodo para intentar guardar
+                    MyPeer.socketSuccessor.send_pyobj({"request":"client"})
+                    dirC = MyPeer.socketSuccessor.recv_pyobj()
+                    dirC = dirC["client"]
+                    MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":dirC})
+                else:
+                    MyPeer.socketClient.send_pyobj({"reply":False,"nextIp":a})
+
             else:
                 print("entro aqui")
                 MyPeer.socketClient.send_pyobj({"reply":True})
@@ -100,10 +115,33 @@ while login:
             dirC = MyPeer.socketSuccessor.recv_pyobj()
             dirC = dirC["client"]
             MyPeer.socketClient.send_pyobj({"reply":dirC})
+
+        elif m["request"] == "updateFT":
+            MyPeer.nextFillFingerTable(m["id"],m["range"],m["socket"])
             
+            if MyPeer.idSuccessor == m["id"]:
+                # Si el siguiente nodo es el que generó la actualizacion, no consulto el socket cliente
+                MyPeer.socketClient.send_pyobj({"nextId":MyPeer.idSuccessor,
+                                                "myId" : MyPeer.id,
+                                                "myRange" : MyPeer.R,
+                                                "mySocket" : MyPeer.getMyClient()
+                
+                })
+            else:
+                # Solicito el siguiente 
+                MyPeer.socketSuccessor.send_pyobj({"request":"client"})
+                dirC = MyPeer.socketSuccessor.recv_pyobj()
+                dirC = dirC["client"]
+                MyPeer.socketClient.send_pyobj({"nextId":MyPeer.idSuccessor,
+                                                "nextIp":dirC,
+                                                "myId" : MyPeer.id,
+                                                "myRange" : MyPeer.R,
+                                                "mySocket" : MyPeer.getMyClient()
+                })   
+
     elif MyPeer.socketPredecessor in sockets:
         m = MyPeer.socketPredecessor.recv_pyobj()
-    
+       
         if m["request"] == "ip":
             MyPeer.socketPredecessor.send_pyobj({"ip":MyPeer.myIp})
         
@@ -129,8 +167,10 @@ while login:
             print("Hora de Chequeo")
             #mi predecesor me pregunta ... What's New Oldman ...
             # reviso si tengo archivos de su pertenencia
+            
             MyPeer.socketPredecessor.send_pyobj({"reply":"ok"})
-            MyPeer.checkFiles(m)
+            a = MyPeer.checkFiles(m)
+            print("Fin Chequeo")
             
                 
                 

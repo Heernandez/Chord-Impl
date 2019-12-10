@@ -32,6 +32,19 @@ class Peer:
         
         self.myIp = self.getIp()
         self.id = generation(self.myIp)
+
+        '''
+        estructura de Finger Table
+        {
+            1910191091 : {
+                            "range" : R[],
+                            "socket" : "127.0.0.1:5555"
+            },
+
+        }
+
+        '''
+        self.fingerTable = {}
         #Define los limites de resposabilidad, R[0] Lim Inferior , R[1] Lim Superior (es el mismo id)
         
         self.R = [self.id + 1,self.id]
@@ -41,9 +54,9 @@ class Peer:
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "5555"  #5555    7777    7007
-        self.portPredecessor = "5000"  #4444    8888    8008
-        self.portSuccessor =   "5000"  #4444    8888    8008
+        self.portClient =      "8555"  #5555    7777    7007
+        self.portPredecessor = "8000"  #4444    8888    8008
+        self.portSuccessor =   "8000"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = self.id
@@ -55,15 +68,40 @@ class Peer:
         self.socketSuccessor.connect("tcp://"+self.myIp+":"+self.portSuccessor)
 
         self.makeDirectory()
-        #self.socketPredecessor.bind("tcp://*:"+self.portPredecessor)
-        print("mi ruta :",PATH)
+        self.fistFillFingerTable()
+        #print("mi ruta :",PATH)
 
     def __str__(self):
-        a = "Node --> {} | Sucesor --> {}".format(self.id,self.idSuccessor)
-        b = "SuccessorCon --> {}:{}".format(self.ipSuccessor,self.portSuccessor)
-        print("Soy el nodo : {}  con sucesor :{} \n y responsabilidades {}".format(self.id,self.idSuccessor,self.R))
+        lista = None
+        a = "Node --> {} | Sucesor --> {}\n".format(self.id,self.idSuccessor)
+        for k in self.fingerTable.keys():
+            if self.fingerTable[k]["range"] != None:
+                lista.append(k)
+        b = "con fingerTable {}\n".format(lista)
+        print(a+b)
         #return a +'\n'+b
     
+    def fistFillFingerTable(self):
+        #Llena la fingerTable de manera generica
+        for i in range(30):
+            lista = []
+            # Candidato para la fingerTable
+            newFT = 2**i + self.id
+            
+            # Debo comprobar que no supere el espacio de llaves 2³⁰ -1
+            if newFT > (2**30 -1):
+                newFT = newFT - (2**30 -1)
+            
+            self.fingerTable[newFT] = { "range" : None, "socket": None}
+
+    def nextFillFingerTable(self,id,R,dir):
+        #Cada vez que se agrega un nodo, cada nodo de la red revisa si este pertenece a su fingertable y lo agrega
+        for k in self.fingerTable.keys():
+            if k == id:
+                self.fingerTable[k]["range"] = R
+                self.fingerTable[k]["socket"] = dir
+                #print("Finger Table Actualizada\n")
+
     def getIp(self):
         nombre = sk.gethostname()
         direccion = sk.gethostbyname(nombre)
@@ -154,7 +192,8 @@ class Peer:
                 print("El nodo ingreso!!!")
                 self.socketSuccessor.send_pyobj({"request":"updateR","id":self.id})
                 _ = self.socketSuccessor.recv_pyobj()
-                
+                #Actualizar Finger Table 
+                #self.sendUpdate()
                 #Hablar con mi sucesor para comprobar si me debe enviar archivos
                 self.negotiateFiles()
                 flag = True
@@ -192,6 +231,19 @@ class Peer:
             f.write(content)
             f.close()    
         return True
+
+    def validateResponsibility(self,id,R):
+        # Dado un id y un rango R, calcula si ese id esta en esa resposabilidad
+        if R[0] < R[1]:
+            if id > R[0] and id <= R[1]:
+                return  True
+            else:
+                return False
+        else:
+            if (id > R[0] and id > R[1]) or (id < R[0] and id <= R[1]):
+                return True
+            else:
+                return False
 
     def validateUpload(self,m):
         #id = (int(m["name"], 16) % (1024 * 1024))
@@ -239,7 +291,7 @@ class Peer:
         fileList = os.listdir(PATH)
         fileToSend = []
         if len(fileList) == 0:
-            pass
+            return False
         else:
             for file in fileList:
                 fileNameToInt = int(file, 16)  % (1024*1024*1024) # nombre hash convertido a  numero (id del archivo)
@@ -251,7 +303,7 @@ class Peer:
         #en fileToSend estan los nombres de los archivos que no pertenencen a este nodo si no a su predecesor
         if len(fileToSend) == 0:
             # Todos pertenencen
-            pass
+            return False
         else:
             #se los tengo que enviar
             conexion = ctx.socket(zmq.REQ)
@@ -274,11 +326,73 @@ class Peer:
                 os.remove(PATH + '/'+ x) # Borro el archivo
             
             conexion.disconnect("tcp://"+ m["myClient"])
+            return True
                 
     def negotiateFiles(self):
         # Hecha la conexion con el sucesor, le pregunto que tiene para mi
         self.socketSuccessor.send_pyobj({"request":"WNO","myClient":self.getMyClient()})
         _ = self.socketSuccessor.recv_pyobj()
+        
+    def sendUpdate(self):
+        self.socketSuccessor.send_pyobj({"request":"client","id":self.id})
+        m = self.socketSuccessor.recv_pyobj()
+        
+        dir = m["client"]
+        conexion = ctx.socket(zmq.REQ)
+        while True:
+            conexion.connect("tcp://"+ dir)
+            conexion.send_pyobj({"request":"updateFT",
+                                "id":self.id,
+                                "range":self.R,
+                                "socket":self.getMyClient()
+                                }
+                            )
+            m = conexion.recv_pyobj()
+            self.nextFillFingerTable(m["myId"],m["myRange"],m["mySocket"])
+            if m["nextId"] == self.id:
+                conexion.disconnect("tcp://"+ dir)
+                break
+            else:
+                #me conecto al siguiente cliente
+                conexion.disconnect("tcp://"+ dir)
+                dir = m["nextIp"]
+    
+    def nextDecition(self,id):
+        # Esta funcion evalua, dado un id recibido, que siguiente conexion retornar, si no hay 
+        # nada en la fingerTable retorna False y la decision es enviar el siguiente, caso contrario envia la conexion al 
+        # Siguiente mas responsable de ese id
+        candidates = []
+        for k in self.fingerTable.keys():
+            if self.fingerTable[k]["range"] != None:
+                candidates.append(k)
+        
+        if len(candidates) == 0:
+            # No hay nada en la finger Table
+            return False
+        else:
+            winner = -1
+            diff = 999999999
+            # Buscar el mas responsable del id
+            for e in candidates:
+                if self.fingerTable[e]["range"][0] < self.fingerTable[e]["range"][1]:
+                    if self.fingerTable[e]["range"][1] >= id:
+                        if (self.fingerTable[e]["range"][1] - id ) < diff:
+                            diff = self.fingerTable[e]["range"][1] - id 
+                            winner = e
+                else:
+                    # Frontera
+                    if self.fingerTable[e]["range"][1] + (2**30-1) >= id:
+                        if (self.fingerTable[e]["range"][1] + (2**30-1)- id ) < diff:
+                            diff = self.fingerTable[e]["range"][1]+ (2**30-1) - id 
+                            winner = e
+            if winner == -1:
+                return False
+            else:
+                return self.fingerTable[winner]["socket"]
+
+
+
+
         
 
 
