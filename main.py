@@ -2,7 +2,7 @@ from Peer import Peer
 import zmq
 
 firstPeer = True
-firstPeer = False
+#firstPeer = False
 
 ctx = zmq.Context()
 MyPeer = Peer()

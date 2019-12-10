@@ -54,9 +54,9 @@ class Peer:
         self.socketPredecessor = ctx.socket(zmq.REP)
         self.socketSuccessor = ctx.socket(zmq.REQ)
         
-        self.portClient =      "8555"  #5555    7777    7007
-        self.portPredecessor = "8000"  #4444    8888    8008
-        self.portSuccessor =   "8000"  #4444    8888    8008
+        self.portClient =      "5555"  #5555    7777    7007
+        self.portPredecessor = "5000"  #4444    8888    8008
+        self.portSuccessor =   "5000"  #4444    8888    8008
 
         self.ipSuccessor = self.myIp
         self.idSuccessor = self.id
